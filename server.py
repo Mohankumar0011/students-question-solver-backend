@@ -1,37 +1,49 @@
-from flask import Flask, request, jsonify
-import google.generativeai as genai
 import os
+import google.generativeai as genai
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
-# Flask app initialization
 app = Flask(__name__)
+CORS(app)
 
-# Gemini API key from environment variables
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+API_KEY = os.environ.get("GEMINI_API_KEY")
+genai.configure(api_key=API_KEY)
 
-# Default route to check if server is running
-@app.route('/')
-def home():
-    return "✅ Student Question Solver API is Live!"
+model_text = genai.GenerativeModel('gemini-1.5-flash')
+model_vision = genai.GenerativeModel('gemini-pro-vision')
 
-# Main API route to solve questions
-@app.route('/ask', methods=['POST'])
-def ask():
+@app.route('/ask-ai', methods=['POST'])
+def ask_ai():
     try:
-        data = request.get_json()
-        question = data.get("question")
+        data = request.json
+        prompt = data.get('prompt')
+        if not prompt:
+            return jsonify({'error': 'No prompt provided'}), 400
 
-        if not question:
-            return jsonify({"error": "❌ Question is missing!"}), 400
-
-        # Generate answer using Gemini Pro model
-        model = genai.GenerativeModel("gemini-pro")
-        response = model.generate_content(question)
-
-        return jsonify({"answer": response.text})
-
+        response = model_text.generate_content(prompt)
+        return jsonify({'response': response.text})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({'error': str(e)}), 500
 
-# Local testing (won’t be used on Render)
-if __name__ == "__main__":
-    app.run(debug=True)
+@app.route('/solve-with-image', methods=['POST'])
+def solve_with_image():
+    try:
+        data = request.json
+        image_data = data.get('image')
+        prompt_text = data.get('prompt', "इस फोटो में क्या सवाल है? विस्तार से हल करो।")
+
+        if not image_data:
+            return jsonify({'error': 'No image data provided'}), 400
+
+        image_parts = [{
+            "mime_type": "image/jpeg",
+            "data": image_data
+        }]
+
+        response = model_vision.generate_content([prompt_text, image_parts[0]])
+        return jsonify({'response': response.text})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
