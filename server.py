@@ -2,25 +2,28 @@ from flask import Flask, request, jsonify
 import google.generativeai as genai
 import os
 
-# Flask app banate hain
+# Flask app initialization
 app = Flask(__name__)
 
-# API key set karo (Render/Replit me env variable se ayega)
+# Gemini API key from environment variables
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
-@app.route("/")
+# Default route to check if server is running
+@app.route('/')
 def home():
-    return "Server is live 🚀"
+    return "✅ Student Question Solver API is Live!"
 
-@app.route("/ask", methods=["POST"])
+# Main API route to solve questions
+@app.route('/ask', methods=['POST'])
 def ask():
     try:
         data = request.get_json()
         question = data.get("question")
 
         if not question:
-            return jsonify({"error": "No question provided"}), 400
+            return jsonify({"error": "❌ Question is missing!"}), 400
 
+        # Generate answer using Gemini Pro model
         model = genai.GenerativeModel("gemini-pro")
         response = model.generate_content(question)
 
@@ -29,6 +32,6 @@ def ask():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# Development ke liye local run
+# Local testing (won’t be used on Render)
 if __name__ == "__main__":
     app.run(debug=True)
