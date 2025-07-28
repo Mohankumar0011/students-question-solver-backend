@@ -1,4 +1,28 @@
-flask
-flask-cors
-google-generativeai
-gunicorn
+from flask import Flask, request, jsonify
+import os
+import google.generativeai as genai
+
+app = Flask(__name__)
+
+# Set your Gemini API key
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+genai.configure(api_key=GEMINI_API_KEY)
+
+model = genai.GenerativeModel('gemini-pro')
+
+@app.route("/")
+def home():
+    return "Server is running!"
+
+@app.route("/ask", methods=["POST"])
+def ask():
+    try:
+        data = request.get_json()
+        question = data.get("question", "")
+        response = model.generate_content(question)
+        return jsonify({"answer": response.text})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+if __name__ == "__main__":
+    app.run(debug=True)
